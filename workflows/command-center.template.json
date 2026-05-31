@@ -1,0 +1,202 @@
+{
+  "name": "EXPORT MARKETING COMMAND CENTER",
+  "active": false,
+  "nodes": [
+    {
+      "parameters": {
+        "availableInChat": true,
+        "agentName": "Export Marketing Command Center",
+        "agentDescription": "Route buyer discovery, email outreach, and reply processing commands.",
+        "suggestedPrompts": {
+          "prompts": [
+            { "text": "find buyers for black pepper in germany" },
+            { "text": "send profile to turkey buyers" },
+            { "text": "check email replies" }
+          ]
+        },
+        "options": { "responseMode": "lastNode" }
+      },
+      "name": "Export Marketing Chat Trigger",
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.4,
+      "position": [160, 320]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.chatInput }}",
+        "hasOutputParser": true,
+        "options": {
+          "systemMessage": "You are an export marketing workflow router. Available intents: FIND_BUYERS, SEND_PROFILE, CHECK_REPLIES, UNKNOWN. FIND_BUYERS is for find/search/discover/add buyers or companies to the spreadsheet. If product is missing, use UNKNOWN and ask which product or industry to search. If buyer count is missing, set limit to 10. SEND_PROFILE is for profile/catalog/outreach email requests. CHECK_REPLIES is for reply monitoring/classification. Follow-up automation runs separately by schedule and must not be triggered manually from chat. Return JSON only.",
+          "maxIterations": 3
+        }
+      },
+      "name": "AI Intent Router",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [440, 320]
+    },
+    {
+      "parameters": {
+        "model": { "__rl": true, "mode": "list", "value": "gpt-5-mini" },
+        "options": { "reasoningEffort": "high" }
+      },
+      "name": "OpenAI Intent Router Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [440, 560]
+    },
+    {
+      "parameters": {
+        "jsonSchemaExample": "{\"intent\":\"FIND_BUYERS\",\"product\":\"Black Pepper\",\"country\":\"Germany\",\"limit\":10,\"confidence\":0.95,\"clarification_question\":\"\"}"
+      },
+      "name": "Intent Router JSON Parser",
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.3,
+      "position": [640, 560]
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": { "caseSensitive": false, "typeValidation": "loose" },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.output.intent === 'FIND_BUYERS' && !!$json.output.product }}",
+                    "operator": { "type": "boolean", "operation": "true" }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "FIND_BUYERS"
+            },
+            {
+              "conditions": {
+                "options": { "caseSensitive": false, "typeValidation": "strict" },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.output.intent }}",
+                    "operator": { "type": "string", "operation": "equals" },
+                    "rightValue": "SEND_PROFILE"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "SEND_PROFILE"
+            },
+            {
+              "conditions": {
+                "options": { "caseSensitive": false, "typeValidation": "strict" },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.output.intent }}",
+                    "operator": { "type": "string", "operation": "equals" },
+                    "rightValue": "CHECK_REPLIES"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "CHECK_REPLIES"
+            }
+          ]
+        },
+        "options": { "fallbackOutput": "extra", "renameFallbackOutput": "ASK_WHAT_TO_EXECUTE" }
+      },
+      "name": "Route Export Marketing Intent",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [720, 320]
+    },
+    {
+      "parameters": {
+        "workflowId": { "__rl": true, "mode": "id", "value": "YOUR_WF_01_BUYER_DISCOVERY_WORKFLOW_ID" },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "product": "={{ $json.output.product }}",
+            "country": "={{ $json.output.country }}",
+            "limit": "={{ $json.output.limit || 10 }}"
+          },
+          "schema": [
+            { "id": "product", "displayName": "product", "type": "string" },
+            { "id": "country", "displayName": "country", "type": "string" },
+            { "id": "limit", "displayName": "limit", "type": "number" }
+          ]
+        },
+        "options": { "waitForSubWorkflow": true }
+      },
+      "name": "Run WF-01 Buyer Discovery",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [1000, 120]
+    },
+    {
+      "parameters": {
+        "workflowId": { "__rl": true, "mode": "id", "value": "YOUR_WF_02_EMAIL_OUTREACH_WORKFLOW_ID" },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": { "country": "={{ $json.output.country }}" },
+          "schema": [{ "id": "country", "displayName": "country", "type": "string" }]
+        },
+        "options": { "waitForSubWorkflow": true }
+      },
+      "name": "Run WF-02 Email Outreach",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [1000, 320]
+    },
+    {
+      "parameters": {
+        "workflowId": { "__rl": true, "mode": "id", "value": "YOUR_WF_03_REPLY_PROCESSOR_WORKFLOW_ID" },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": { "action": "check_replies" },
+          "schema": [{ "id": "action", "displayName": "action", "type": "string" }]
+        },
+        "options": { "waitForSubWorkflow": true }
+      },
+      "name": "Run WF-03 Reply Processor",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [1000, 520]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "message",
+              "name": "message",
+              "type": "string",
+              "value": "={{ $json.output.clarification_question || 'I am not sure which workflow to execute. Should I run Buyer Discovery, Email Outreach, or Reply Processor?' }}"
+            }
+          ]
+        }
+      },
+      "name": "Unknown Command Response",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [1000, 720]
+    }
+  ],
+  "connections": {
+    "Export Marketing Chat Trigger": { "main": [[{ "node": "AI Intent Router", "type": "main", "index": 0 }]] },
+    "AI Intent Router": { "main": [[{ "node": "Route Export Marketing Intent", "type": "main", "index": 0 }]] },
+    "OpenAI Intent Router Model": { "ai_languageModel": [[{ "node": "AI Intent Router", "type": "ai_languageModel", "index": 0 }]] },
+    "Intent Router JSON Parser": { "ai_outputParser": [[{ "node": "AI Intent Router", "type": "ai_outputParser", "index": 0 }]] },
+    "Route Export Marketing Intent": {
+      "main": [
+        [{ "node": "Run WF-01 Buyer Discovery", "type": "main", "index": 0 }],
+        [{ "node": "Run WF-02 Email Outreach", "type": "main", "index": 0 }],
+        [{ "node": "Run WF-03 Reply Processor", "type": "main", "index": 0 }],
+        [{ "node": "Unknown Command Response", "type": "main", "index": 0 }]
+      ]
+    }
+  },
+  "settings": { "executionOrder": "v1" }
+}

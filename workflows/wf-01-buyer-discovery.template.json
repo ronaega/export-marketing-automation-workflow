@@ -1,0 +1,92 @@
+{
+  "name": "WF-01 Buyer Discovery",
+  "active": false,
+  "nodes": [
+    {
+      "parameters": { "inputSource": "passthrough" },
+      "name": "Called by Command Center",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [220, 300]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Find up to {{ $json.limit || 10 }} real potential buyers, importers, distributors, wholesalers, commodity traders, or food manufacturers for {{ $json.product }} in {{ $json.country }}. Use reliable internet resources through web search. Prioritize leads where you can find at least Company Name and Email. Return only qualified companies with source evidence. Do not ask follow-up questions. If product is empty or missing, return an empty leads array. Always set Status to No Action.",
+        "hasOutputParser": true,
+        "options": {
+          "systemMessage": "You are an export marketing buyer discovery analyst. Return structured JSON with shape {\"leads\":[...]}. If no qualified buyer is found, return {\"leads\":[]}. Never return more leads than the requested limit.",
+          "maxIterations": 8
+        }
+      },
+      "name": "Discover and Qualify Buyers",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [540, 300]
+    },
+    {
+      "parameters": {
+        "model": { "__rl": true, "mode": "list", "value": "gpt-5-mini" },
+        "responsesApiEnabled": true,
+        "builtInTools": { "webSearch": { "searchContextSize": "medium" } },
+        "options": { "reasoningEffort": "high" }
+      },
+      "name": "OpenAI Buyer Research Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [540, 540]
+    },
+    {
+      "parameters": {
+        "schemaType": "fromJson",
+        "jsonSchemaExample": "{\"leads\":[{\"Company Name\":\"Example Import GmbH\",\"Country\":\"Germany\",\"Contact Person\":\"\",\"Email\":\"sales@example.com\",\"Phone Number\":\"\",\"Website\":\"https://example.com\",\"Source\":\"https://example.com/contact\",\"Product Interest\":\"Black Pepper\",\"Buyer Score\":85,\"Status\":\"No Action\",\"Reason\":\"Importer or distributor for relevant food commodities\"}]}",
+        "autoFix": true
+      },
+      "name": "Buyer Lead JSON Parser",
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.3,
+      "position": [760, 540]
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $input.first().json;\nconst leads = Array.isArray(input.leads) ? input.leads : Array.isArray(input.output?.leads) ? input.output.leads : [];\nconst command = $('Called by Command Center').first().json;\nconst today = new Date().toISOString().slice(0, 10);\nreturn leads.filter((lead) => lead['Company Name'] || lead.CompanyName || lead.companyName).map((lead) => ({ json: {\n  'Company Name': lead['Company Name'] || lead.CompanyName || lead.companyName || '',\n  Country: lead.Country || command.country || '',\n  'Contact Person': lead['Contact Person'] || lead.ContactPerson || '',\n  Email: lead.Email || lead.email || '',\n  'Phone Number': lead['Phone Number'] || lead.Phone || lead.phone || '',\n  Website: lead.Website || lead.website || '',\n  Source: lead.Source || lead.source || '',\n  'Product Interest': lead['Product Interest'] || command.product || '',\n  'Date Added': today,\n  'Last Contact Date': '',\n  'Buyer Score': Number(lead['Buyer Score'] || lead.buyer_score || lead.buyerScore || 0),\n  Status: 'No Action',\n  'Reply Summary': '',\n  'Reply Confidence': '',\n  'Last Follow-Up Stage': ''\n}}));"
+      },
+      "name": "Expand Leads and Add Dates",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [860, 300]
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": { "__rl": true, "mode": "id", "value": "YOUR_BUYER_DATABASE_SPREADSHEET_ID" },
+        "sheetName": { "__rl": true, "mode": "name", "value": "YOUR_BUYER_DATABASE_SHEET_NAME" },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "matchingColumns": ["Website"],
+          "value": {}
+        },
+        "options": { "cellFormat": "USER_ENTERED" }
+      },
+      "name": "Save Leads to Buyer Database",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [1160, 300]
+    }
+  ],
+  "connections": {
+    "Called by Command Center": { "main": [[{ "node": "Discover and Qualify Buyers", "type": "main", "index": 0 }]] },
+    "Discover and Qualify Buyers": { "main": [[{ "node": "Expand Leads and Add Dates", "type": "main", "index": 0 }]] },
+    "OpenAI Buyer Research Model": {
+      "ai_languageModel": [
+        [
+          { "node": "Discover and Qualify Buyers", "type": "ai_languageModel", "index": 0 },
+          { "node": "Buyer Lead JSON Parser", "type": "ai_languageModel", "index": 0 }
+        ]
+      ]
+    },
+    "Buyer Lead JSON Parser": { "ai_outputParser": [[{ "node": "Discover and Qualify Buyers", "type": "ai_outputParser", "index": 0 }]] },
+    "Expand Leads and Add Dates": { "main": [[{ "node": "Save Leads to Buyer Database", "type": "main", "index": 0 }]] }
+  },
+  "settings": { "executionOrder": "v1" }
+}

@@ -1,0 +1,104 @@
+{
+  "name": "WF-04 Follow-Up Engine",
+  "active": false,
+  "nodes": [
+    {
+      "parameters": { "rule": { "interval": [{ "field": "days", "triggerAtHour": 9 }] } },
+      "name": "Daily Follow-Up Schedule",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [180, 300]
+    },
+    {
+      "parameters": {
+        "documentId": { "__rl": true, "mode": "id", "value": "YOUR_BUYER_DATABASE_SPREADSHEET_ID" },
+        "sheetName": { "__rl": true, "mode": "name", "value": "YOUR_BUYER_DATABASE_SHEET_NAME" },
+        "options": {}
+      },
+      "name": "Read Buyer Database",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const now = new Date();\nconst daysSince = (value) => {\n  if (!value) return 999;\n  const date = new Date(value);\n  if (Number.isNaN(date.getTime())) return 999;\n  return Math.floor((now - date) / 86400000);\n};\nreturn $input.all().map((item) => item.json).filter((lead) => {\n  const email = lead.Email;\n  const status = lead.Status;\n  const days = daysSince(lead['Last Contact Date']);\n  return email && ((status === 'Company Profile Has Been Sent' && days >= 7) || (status === 'Inquiry' && days >= 30));\n}).map((lead) => {\n  const days = daysSince(lead['Last Contact Date']);\n  const followUpStage = lead.Status === 'Inquiry' ? 'Inquiry 30 day follow-up' : (days >= 14 ? 'Second profile follow-up' : 'First profile follow-up');\n  return { json: { ...lead, FollowUpStage: followUpStage, DaysSinceLastContact: days } };\n});"
+      },
+      "name": "Select Follow-Up Candidates",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [740, 300]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Write a concise professional follow-up email for {{ $json[\"Company Name\"] }}. Stage: {{ $json.FollowUpStage }}. Status: {{ $json.Status }}. Keep it under 160 words. Sign as YOUR_SENDER_NAME, YOUR_COMPANY_NAME.",
+        "options": {
+          "systemMessage": "You write polite B2B export sales follow-up emails. Do not pressure the buyer. Return only the email body in HTML with simple line breaks.",
+          "maxIterations": 3
+        }
+      },
+      "name": "Write Follow-Up Email",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [1020, 300]
+    },
+    {
+      "parameters": {
+        "model": { "__rl": true, "mode": "list", "value": "gpt-5-mini" },
+        "options": { "reasoningEffort": "high" }
+      },
+      "name": "OpenAI Follow-Up Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [1020, 540]
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "operation": "send",
+        "sendTo": "={{ $(\"Select Follow-Up Candidates\").item.json.Email }}",
+        "subject": "Follow Up - YOUR_COMPANY_NAME",
+        "emailType": "html",
+        "message": "={{ $json.output }}",
+        "senderName": "YOUR_SENDER_NAME",
+        "replyTo": "YOUR_REPLY_TO_EMAIL",
+        "options": { "appendAttribution": false }
+      },
+      "name": "Send Follow-Up Email",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [1300, 300]
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": { "__rl": true, "mode": "id", "value": "YOUR_BUYER_DATABASE_SPREADSHEET_ID" },
+        "sheetName": { "__rl": true, "mode": "name", "value": "YOUR_BUYER_DATABASE_SHEET_NAME" },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "matchingColumns": ["Email"],
+          "value": {
+            "Email": "={{ $(\"Select Follow-Up Candidates\").item.json.Email }}",
+            "Last Contact Date": "={{ $now.toFormat(\"yyyy-MM-dd\") }}",
+            "Last Follow-Up Stage": "={{ $(\"Select Follow-Up Candidates\").item.json.FollowUpStage }}"
+          }
+        },
+        "options": { "cellFormat": "USER_ENTERED" }
+      },
+      "name": "Update Follow-Up Date",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [1580, 300]
+    }
+  ],
+  "connections": {
+    "Daily Follow-Up Schedule": { "main": [[{ "node": "Read Buyer Database", "type": "main", "index": 0 }]] },
+    "Read Buyer Database": { "main": [[{ "node": "Select Follow-Up Candidates", "type": "main", "index": 0 }]] },
+    "Select Follow-Up Candidates": { "main": [[{ "node": "Write Follow-Up Email", "type": "main", "index": 0 }]] },
+    "OpenAI Follow-Up Model": { "ai_languageModel": [[{ "node": "Write Follow-Up Email", "type": "ai_languageModel", "index": 0 }]] },
+    "Write Follow-Up Email": { "main": [[{ "node": "Send Follow-Up Email", "type": "main", "index": 0 }]] },
+    "Send Follow-Up Email": { "main": [[{ "node": "Update Follow-Up Date", "type": "main", "index": 0 }]] }
+  },
+  "settings": { "executionOrder": "v1" }
+}

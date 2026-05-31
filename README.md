@@ -46,6 +46,8 @@ flowchart TD
 
 ## Workflows
 
+Public-safe n8n template JSON files are available in the [workflows](./workflows) folder. These templates use placeholders and do not include credentials, private spreadsheet IDs, private Drive file IDs, or live workflow IDs.
+
 ### EXPORT MARKETING COMMAND CENTER
 
 The chat-based router. It interprets user commands and executes the closest matching workflow.
@@ -174,6 +176,12 @@ Optional integrations:
 |-- SECURITY.md
 |-- docs/
 |   `-- WORKFLOW_SPEC.md
+|-- workflows/
+|   |-- command-center.template.json
+|   |-- wf-01-buyer-discovery.template.json
+|   |-- wf-02-email-outreach.template.json
+|   |-- wf-03-reply-processor.template.json
+|   `-- wf-04-follow-up-engine.template.json
 `-- Buyer_Database_Template.xlsx
 ```
 
