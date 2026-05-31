@@ -179,6 +179,8 @@ Optional integrations:
 
 ## License
 
-Recommended license: MIT License.
+This project is released under the MIT License.
+
+See the [LICENSE](./LICENSE) file for the full license text.
 
 MIT is a good fit for this project because it is simple, widely recognized, and permissive. It allows other people to use, adapt, and build on the workflow blueprint while keeping attribution to the original project.
