@@ -1,5 +1,13 @@
 # Export Marketing Automation Workflow
 
+[![n8n](https://img.shields.io/badge/n8n-EA4B71?style=for-the-badge&logo=n8n&logoColor=white)](https://n8n.io/)
+[![OpenAI](https://img.shields.io/badge/OpenAI-412991?style=for-the-badge&logo=openai&logoColor=white)](https://openai.com/)
+[![Google Sheets](https://img.shields.io/badge/Google%20Sheets-34A853?style=for-the-badge&logo=googlesheets&logoColor=white)](https://www.google.com/sheets/about/)
+[![Gmail](https://img.shields.io/badge/Gmail-EA4335?style=for-the-badge&logo=gmail&logoColor=white)](https://www.google.com/gmail/)
+[![Google Drive](https://img.shields.io/badge/Google%20Drive-4285F4?style=for-the-badge&logo=googledrive&logoColor=white)](https://www.google.com/drive/)
+[![Automation](https://img.shields.io/badge/Workflow-Automation-FFB000?style=for-the-badge)](#architecture)
+[![License: MIT](https://img.shields.io/badge/License-MIT-2E7D32?style=for-the-badge)](#license)
+
 An n8n-based automation blueprint for export marketing operations: buyer discovery, lead storage, company profile outreach, reply classification, and scheduled follow-up management.
 
 This repository is designed as a public-safe project package. It does not include credentials, API keys, OAuth tokens, private spreadsheet URLs, or live workflow exports.
@@ -162,13 +170,15 @@ Optional integrations:
 
 ```text
 .
-├── README.md
-├── SECURITY.md
-├── docs/
-│   └── WORKFLOW_SPEC.md
-└── Buyer_Database_Template.xlsx
+|-- README.md
+|-- SECURITY.md
+|-- docs/
+|   `-- WORKFLOW_SPEC.md
+`-- Buyer_Database_Template.xlsx
 ```
 
 ## License
 
-Add your preferred license before distributing this project publicly.
+Recommended license: MIT License.
+
+MIT is a good fit for this project because it is simple, widely recognized, and permissive. It allows other people to use, adapt, and build on the workflow blueprint while keeping attribution to the original project.
