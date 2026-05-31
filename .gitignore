@@ -1,0 +1,28 @@
+# Secrets and local environment
+.env
+.env.*
+*.pem
+*.key
+*.p12
+*.pfx
+*service-account*.json
+*credentials*.json
+*token*.json
+
+# Local/private notes
+CHECKPOINT_Export_Marketing_Automation.md
+
+# Local screenshots from the n8n build session
+*.PNG
+*.png
+
+# OS/editor files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Dependency/build folders
+node_modules/
+dist/
+build/
